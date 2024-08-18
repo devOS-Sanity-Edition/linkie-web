@@ -8,6 +8,9 @@ export default defineConfig({
     server: {
         port: 8080,
     },
+    build: {
+        manifest: "manifest.json",
+    },
     plugins: [
         vue(),
         VitePWA({

@@ -1,0 +1,42 @@
+services:
+    backend:
+        restart: unless-stopped
+        name: linkie-backend
+        networks:
+            - traefik
+        build:
+            context: .
+            dockerfile: ./backend.dockerfile
+#        ports:
+#            - 80:8080
+        labels:
+            traefik.enable: true
+            traefik.http.routers.linkie-api.entrypoints: https
+            traefik.http.routers.linkie-api.rule: Host(`linkie.devos.one`) && Path(`/api`)
+            traefik.http.routers.linkie-api.tls: true
+            
+            traefik.http.services.linkie-api-svc.loadbalancer.server.port: 8080
+
+    frontend:
+        restart: unless-stopped
+        name: linkie-frontend
+        networks:
+            - traefik
+        depends_on:
+            - backend
+        build:
+            context: .
+            dockerfile: ./frontend.dockerfile
+#        ports:
+#            - 8080:8080
+        labels:
+            traefik.enable: true
+            traefik.http.routers.linkie-web.entrypoints: https
+            traefik.http.routers.linkie-web.rule: Host(`linkie.devos.one`)
+            traefik.http.routers.linkie-web.tls: true
+            
+            traefik.http.services.linkie-web-svc.loadbalancer.server.port: 8080
+
+networks:
+    traefik:
+        external: true

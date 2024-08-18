@@ -1,0 +1,109 @@
+﻿diff --git a/compose.yml b/compose.yml
+index debf38b..e396b1b 100644
+--- a/compose.yml
++++ b/compose.yml
+@@ -1,21 +1,42 @@
+ services:
+     backend:
+         restart: unless-stopped
++        name: linkie-backend
++        networks:
++            - traefik
+         build:
+             context: .
+             dockerfile: ./backend.dockerfile
+-        ports:
+-            - 34589:8080
+-#        volumes:
+-#            - ./backend_data:/app/
+-    
++#        ports:
++#            - 80:8080
++        labels:
++            traefik.enable: true
++            traefik.http.routers.linkie-api.entrypoints: https
++            traefik.http.routers.linkie-api.rule: Host(`linkie.devos.one`) && Path(`/api`)
++            traefik.http.routers.linkie-api.tls: true
++            
++            traefik.http.services.linkie-api-svc.loadbalancer.server.port: 8080
++
+     frontend:
+         restart: unless-stopped
++        name: linkie-frontend
++        networks:
++            - traefik
++        depends_on:
++            - backend
+         build:
+             context: .
+             dockerfile: ./frontend.dockerfile
+-        ports:
+-#            - 34590:8080
+-            - 8080:8080
+-#        volumes:
+-#            - ./frontend_data:/app/
+\ No newline at end of file
++#        ports:
++#            - 8080:8080
++        labels:
++            traefik.enable: true
++            traefik.http.routers.linkie-web.entrypoints: https
++            traefik.http.routers.linkie-web.rule: Host(`linkie.devos.one`)
++            traefik.http.routers.linkie-web.tls: true
++            
++            traefik.http.services.linkie-web-svc.loadbalancer.server.port: 8080
++
++networks:
++    traefik:
++        external: true
+\ No newline at end of file
+diff --git a/frontend.dockerfile b/frontend.dockerfile
+index 42e23ac..38c81c1 100644
+--- a/frontend.dockerfile
++++ b/frontend.dockerfile
+@@ -1,5 +1,5 @@
+ # Setup Node Alpine image
+-FROM node:20-alpine
++FROM node:20-alpine AS builder
+ 
+ RUN npm install -g http-server
+ 
+@@ -19,9 +19,18 @@ COPY frontend/ $APP_HOME/
+ 
+ RUN npm run build
+ 
+-EXPOSE 8080
+-# EXPOSE $PORT
++FROM registry.gitlab.com/artrinix/web-server:latest
+ 
+-# CMD [ "npm", "run", "build" ]
++ENV APP_HOME=/app
++
++COPY --from=builder $APP_HOME/dist/ /dist
++COPY template.tmpl /dist/template.tmpl
++
++ENV ENTRYPOINT="src/main.ts"
++ENV PLATFORM="vue"
++ENV PORT=:8080
++EXPOSE $PORT
++
++WORKDIR /
+ 
+-CMD [ "http-server", "dist" ]
+\ No newline at end of file
++ENTRYPOINT [ "/server" ]
+\ No newline at end of file
+diff --git a/frontend/vite.config.mts b/frontend/vite.config.mts
+index ed5c3e2..3fdf787 100644
+--- a/frontend/vite.config.mts
++++ b/frontend/vite.config.mts
+@@ -8,6 +8,9 @@ export default defineConfig({
+     server: {
+         port: 8080,
+     },
++    build: {
++        manifest: "manifest.json",
++    },
+     plugins: [
+         vue(),
+         VitePWA({

@@ -2,7 +2,7 @@ import axios, {AxiosResponse} from "axios"
 import {isTauri} from "./tauri/tauri"
 import {LocationQuery, RouteLocationNormalizedLoaded, useRoute} from "vue-router"
 
-export const backendServer = "https://linkieapi.shedaniel.me"
+export const backendServer = "https://linkie.devos.one"
 export const localBackendServer = "http://localhost:6969"
 
 export const HTTP = axios.create({
